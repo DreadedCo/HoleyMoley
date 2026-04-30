@@ -1,195 +1,223 @@
-const COLORS = ['red','orange','yellow','blue','indigo','violet','pink','cyan','magenta'];
+/* ── Constants ── */
 
-function rand(min, max) {
-    return Math.random() * (max - min) + min;
+const GATE_COLORS = [
+  'red','orange','yellow','blue','indigo','violet','pink','cyan','magenta'
+];
+
+const DIFFICULTY = {
+  easy:   { spread: 0.12, angleRand: 0.15, parBonus: 3 },
+  normal: { spread: 0.35, angleRand: 0.50, parBonus: 2 },
+  hard:   { spread: 0.70, angleRand: 1.00, parBonus: 1 },
+};
+
+const MIN_DIST    = 1;    // minimum feet between any two objects
+const MAX_RETRIES = 500;  // placement attempts per gate
+const GATE_HALF_W = 0.25; // half-width of a gate (ft)
+const GATE_THICK  = 0.12; // half-thickness of a gate (ft)
+
+/* ── Utilities ── */
+
+function rand(lo, hi) { return Math.random() * (hi - lo) + lo; }
+function dist(a, b)   { return Math.hypot(a.x - b.x, a.y - b.y); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function randPoint(l, w, margin) {
+  margin = margin || 1;
+  return { x: rand(margin, l - margin), y: rand(margin, w - margin) };
 }
 
-function dist(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
+function gateCenter(g) {
+  return { x: (g.x1 + g.x2) / 2, y: (g.y1 + g.y2) / 2 };
 }
 
-function generatePoint(l, w) {
-    return { x: rand(1, l - 1), y: rand(1, w - 1) };
+/* ── Layout generation ── */
+
+function placeBallAndHole(l, w, diff) {
+  var ball, hole;
+
+  if (diff === 'easy') {
+    ball = { x: rand(1, 2),         y: rand(1, w - 1) };
+    hole = { x: rand(l - 2, l - 1), y: rand(1, w - 1) };
+  } else if (diff === 'normal') {
+    ball = { x: rand(1, l * 0.25),      y: rand(1, w - 1) };
+    hole = { x: rand(l * 0.75, l - 1),  y: rand(1, w - 1) };
+  } else {
+    ball = randPoint(l, w);
+    hole = randPoint(l, w);
+    while (dist(ball, hole) < Math.max(l, w) * 0.3)
+      hole = randPoint(l, w);
+  }
+
+  return { ball: ball, hole: hole };
 }
 
-function ok(p, pts, md) {
-    return pts.every(o => dist(p, o) >= md);
-}
+function placeGates(ball, hole, l, w, n, config) {
+  var pathAng = Math.atan2(hole.y - ball.y, hole.x - ball.x);
+  var placed  = [ball, hole];
+  var gates   = [];
 
-function generateLayout(l, w, n) {
+  for (var i = 0; i < n; i++) {
+    var t     = (i + 1) / (n + 1);
+    var baseX = ball.x + (hole.x - ball.x) * t;
+    var baseY = ball.y + (hole.y - ball.y) * t;
 
-    let pts = [];
+    var cx, cy, found = false;
 
-    let md = Math.max(1, Math.min(l, w) / (n + 3));
+    for (var a = 0; a < MAX_RETRIES; a++) {
+      var perp   = rand(-1, 1) * config.spread * Math.min(l, w);
+      var jitter = a > 50 ? (a / MAX_RETRIES) * 2 : 0;
 
-    let ball, hole;
+      var tryX = clamp(baseX + Math.cos(pathAng + Math.PI / 2) * perp + rand(-jitter, jitter), 1, l - 1);
+      var tryY = clamp(baseY + Math.sin(pathAng + Math.PI / 2) * perp + rand(-jitter, jitter), 1, w - 1);
 
-    // BALL
-    for (let i = 0; i < 1000; i++) {
-        let p = generatePoint(l, w);
-        if (ok(p, pts, md)) {
-            ball = p;
-            pts.push(p);
-            break;
-        }
+      if (placed.every(function(p) { return dist({ x: tryX, y: tryY }, p) >= MIN_DIST; })) {
+        cx = tryX; cy = tryY; found = true; break;
+      }
     }
 
-    // HOLE
-    for (let i = 0; i < 1000; i++) {
-        let p = generatePoint(l, w);
-        if (ok(p, pts, md)) {
-            hole = p;
-            pts.push(p);
-            break;
-        }
-    }
+    if (!found) continue;
+    placed.push({ x: cx, y: cy });
 
-    let centers = [];
-    let gates = [];
+    // Gate orientation
+    var prev        = gates.length ? gateCenter(gates[gates.length - 1]) : ball;
+    var approachAng = Math.atan2(cy - prev.y, cx - prev.x);
+    var perpAng     = approachAng + Math.PI / 2;
+    var ang         = perpAng + (rand(0, Math.PI) - perpAng) * config.angleRand;
 
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < 1000; j++) {
-            let c = generatePoint(l, w);
-            if (ok(c, pts, md)) {
-                centers.push(c);
-                pts.push(c);
-                break;
-            }
-        }
-    }
+    var dx = Math.cos(ang) * GATE_HALF_W;
+    var dy = Math.sin(ang) * GATE_HALF_W;
 
-    centers.sort((a, b) => (a.x - ball.x) - (b.x - ball.x));
-
-    centers.forEach((c, i) => {
-        let ang = Math.random() * Math.PI;
-        let dx = Math.cos(ang) * 0.25;
-        let dy = Math.sin(ang) * 0.25;
-
-        gates.push({
-            x1: c.x - dx,
-            y1: c.y - dy,
-            x2: c.x + dx,
-            y2: c.y + dy,
-            color: COLORS[i % COLORS.length],
-            index: i + 1
-        });
+    gates.push({
+      x1: cx - dx, y1: cy - dy,
+      x2: cx + dx, y2: cy + dy,
+      color: GATE_COLORS[i % GATE_COLORS.length],
+      index: i + 1,
     });
+  }
 
-    return { l, w, ball, hole, gates };
+  return gates;
 }
 
-function par(n, d) {
-    return n + (d === 'easy' ? 3 : d === 'normal' ? 2 : 1);
+function generateLayout(l, w, n, diff) {
+  var result = placeBallAndHole(l, w, diff);
+  var gates  = placeGates(result.ball, result.hole, l, w, n, DIFFICULTY[diff]);
+  return { l: l, w: w, ball: result.ball, hole: result.hole, gates: gates };
 }
+
+/* ── Main entry ── */
 
 function generate() {
+  var l = clamp(parseFloat(document.getElementById('length').value), 5, 25);
+  var w = clamp(parseFloat(document.getElementById('width').value),  5, 25);
+  var n = parseInt(document.getElementById('gates').value);
+  var d = document.getElementById('difficulty').value;
 
-    let l = parseFloat(document.getElementById("length").value);
-    let w = parseFloat(document.getElementById("width").value);
-    let n = parseInt(document.getElementById("gates").value);
-    let d = document.getElementById("difficulty").value;
+  var layout = generateLayout(l, w, n, d);
 
-    l = Math.max(5, Math.min(100, l));
-    w = Math.max(5, Math.min(100, w));
+  document.getElementById('par').textContent = 'Par: ' + (n + DIFFICULTY[d].parBonus);
 
-    let data = generateLayout(l, w, n);
-
-    document.getElementById("par").innerText = "Par: " + par(n, d);
-
-    draw(data);
+  draw(layout);
 }
 
+/* ── Drawing ── */
+
 function draw(data) {
+  var canvas = document.getElementById('c');
+  var ctx    = canvas.getContext('2d');
+  var card   = canvas.parentElement;
 
-    const canvas = document.getElementById("c");
-    const ctx = canvas.getContext("2d");
+  var maxW  = card.clientWidth - 48;
+  var maxH  = 500;
+  var ratio = data.l / data.w;
 
-    const maxW = 950;
-    const maxH = 600;
+  var cw, ch;
+  if (ratio > maxW / maxH) { cw = maxW; ch = maxW / ratio; }
+  else                      { ch = maxH; cw = maxH * ratio; }
 
-    const aspect = data.l / data.w;
+  canvas.width  = cw;
+  canvas.height = ch;
+  canvas.style.maxWidth = '100%';
 
-    let cw, ch;
+  var scale = cw / data.l;
+  var tx = function(x) { return x * scale; };
+  var ty = function(y) { return y * scale; };
 
-    if (aspect > maxW / maxH) {
-        cw = maxW;
-        ch = maxW / aspect;
-    } else {
-        ch = maxH;
-        cw = maxH * aspect;
-    }
+  ctx.clearRect(0, 0, cw, ch);
 
-    canvas.width = cw;
-    canvas.height = ch;
+  drawPath(ctx, data, tx, ty);
+  drawGates(ctx, data.gates, tx, ty);
+  drawBall(ctx, data.ball, tx, ty, scale);
+  drawHole(ctx, data.hole, tx, ty, scale);
+}
 
-    const scale = cw / data.l;
+function drawPath(ctx, data, tx, ty) {
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(tx(data.ball.x), ty(data.ball.y));
+  data.gates.forEach(function(g) {
+    ctx.lineTo(tx((g.x1 + g.x2) / 2), ty((g.y1 + g.y2) / 2));
+  });
+  ctx.lineTo(tx(data.hole.x), ty(data.hole.y));
+  ctx.stroke();
+}
 
-    const tx = x => x * scale;
-    const ty = y => y * scale;
+function drawGates(ctx, gates, tx, ty) {
+  gates.forEach(function(g) {
+    var dx  = g.x2 - g.x1;
+    var dy  = g.y2 - g.y1;
+    var len = Math.hypot(dx, dy);
+    var px  = (-dy / len) * GATE_THICK;
+    var py  = ( dx / len) * GATE_THICK;
 
-    function circle(x, y, r, c, stroke=false) {
-        ctx.beginPath();
-        ctx.arc(x, y, r * scale, 0, Math.PI * 2);
-
-        if (stroke) {
-            ctx.strokeStyle = c;
-            ctx.stroke();
-        } else {
-            ctx.fillStyle = c;
-            ctx.fill();
-        }
-    }
-
-    ctx.clearRect(0, 0, cw, ch);
-
-    // path
-    ctx.strokeStyle = "rgba(0,0,0,0.15)";
     ctx.beginPath();
-    ctx.moveTo(tx(data.ball.x), ty(data.ball.y));
-
-    data.gates.forEach(g => {
-        ctx.lineTo(tx((g.x1 + g.x2)/2), ty((g.y1 + g.y2)/2));
-    });
-
-    ctx.lineTo(tx(data.hole.x), ty(data.hole.y));
-    ctx.stroke();
-
-    // gates
-    data.gates.forEach(g => {
-        ctx.strokeStyle = g.color;
-        ctx.lineWidth = 6;
-
-        ctx.beginPath();
-        ctx.moveTo(tx(g.x1), ty(g.y1));
-        ctx.lineTo(tx(g.x2), ty(g.y2));
-        ctx.stroke();
-
-        ctx.fillStyle = "black";
-        ctx.fillText(g.index, tx((g.x1+g.x2)/2), ty((g.y1+g.y2)/2));
-    });
-
-    // ball
-    circle(tx(data.ball.x), ty(data.ball.y), 0.08, "white");
-
-    // hole
-    const hx = tx(data.hole.x);
-    const hy = ty(data.hole.y);
-
-    circle(hx, hy, 0.2, "white", true);
-
-    // flag pole
-    ctx.strokeStyle = "red";
-    ctx.beginPath();
-    ctx.moveTo(hx, hy);
-    ctx.lineTo(hx, hy - 30);
-    ctx.stroke();
-
-    // red triangle flag
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.moveTo(hx, hy - 30);        // top of pole
-    ctx.lineTo(hx + 15, hy - 22);   // right tip
-    ctx.lineTo(hx, hy - 15);        // bottom back toward pole
+    ctx.moveTo(tx(g.x1 - px), ty(g.y1 - py));
+    ctx.lineTo(tx(g.x2 - px), ty(g.y2 - py));
+    ctx.lineTo(tx(g.x2 + px), ty(g.y2 + py));
+    ctx.lineTo(tx(g.x1 + px), ty(g.y1 + py));
     ctx.closePath();
-    ctx.fill();
+    ctx.fillStyle   = g.color; ctx.fill();
+    ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.fillStyle    = 'black';
+    ctx.font         = 'bold 12px Inter, sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(g.index, tx((g.x1 + g.x2) / 2), ty((g.y1 + g.y2) / 2));
+  });
+}
+
+function drawCircle(ctx, x, y, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (fill)   { ctx.fillStyle   = fill;   ctx.fill();   }
+  if (stroke) { ctx.strokeStyle = stroke;  ctx.lineWidth = 1; ctx.stroke(); }
+}
+
+function drawBall(ctx, ball, tx, ty, scale) {
+  drawCircle(ctx, tx(ball.x), ty(ball.y), 0.08 * scale, 'white', 'black');
+}
+
+function drawHole(ctx, hole, tx, ty, scale) {
+  var hx = tx(hole.x);
+  var hy = ty(hole.y);
+
+  drawCircle(ctx, hx, hy, 0.2 * scale, 'white', 'black');
+
+  // Flag pole
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(hx, hy);
+  ctx.lineTo(hx, hy - 30);
+  ctx.stroke();
+
+  // Flag
+  ctx.fillStyle = 'red';
+  ctx.beginPath();
+  ctx.moveTo(hx, hy - 30);
+  ctx.lineTo(hx + 15, hy - 22);
+  ctx.lineTo(hx, hy - 15);
+  ctx.closePath();
+  ctx.fill();
 }
