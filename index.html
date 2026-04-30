@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Holey Moley</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>⛳ Holey Moley 🏌️</h1>
+    <div class="author">Created by Max.</div>
+    <div class="version">v1.0</div>
+
+    <div class="card">
+
+        <label>Course Length (ft)</label>
+        <input id="length" type="number" min="5" max="100" value="11">
+
+        <label>Course Width (ft)</label>
+        <input id="width" type="number" min="5" max="100" value="5">
+
+        <label>Number of Gates</label>
+        <select id="gates">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+        </select>
+
+        <label>Difficulty</label>
+        <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+        </select>
+
+        <br><br>
+        <button onclick="generate()">Generate Hole</button>
+    </div>
+
+    <div class="card">
+        <h2 id="par">Par: -</h2>
+        <canvas id="c"></canvas>
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
