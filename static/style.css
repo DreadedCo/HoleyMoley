@@ -1,0 +1,68 @@
+body {
+    margin: 0;
+    font-family: Inter, sans-serif;
+    background: radial-gradient(circle at top, #1b5e20, #0d1b10);
+    color: white;
+    text-align: center;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+}
+
+h1 {
+    font-size: 48px;
+    margin-bottom: 0;
+}
+
+.author {
+    opacity: 0.6;
+    font-size: 13px;
+}
+
+.version {
+    opacity: 0.6;
+    font-size: 13px;
+}
+
+.card {
+    background: rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+label {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+input, select {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+    text-align: center;
+}
+
+button {
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: none;
+    background: #00e676;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+canvas {
+    border: 3px solid black;
+    border-radius: 12px;
+    background: #7bd67b;
+}
