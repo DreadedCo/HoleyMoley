@@ -177,9 +177,19 @@ function draw(data) {
 
     circle(hx, hy, 0.2, "white", true);
 
+    // flag pole
     ctx.strokeStyle = "red";
     ctx.beginPath();
     ctx.moveTo(hx, hy);
     ctx.lineTo(hx, hy - 30);
     ctx.stroke();
+
+    // red triangle flag
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - 30);        // top of pole
+    ctx.lineTo(hx + 15, hy - 22);   // right tip
+    ctx.lineTo(hx, hy - 15);        // bottom back toward pole
+    ctx.closePath();
+    ctx.fill();
 }
