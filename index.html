@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Holey Moley</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,17 +19,17 @@
   <div class="card">
     <div class="controls-row">
       <div class="control-group">
-        <label>Length &nbsp;<span id="lengthVal">11</span> ft</label>
+        <label>Course Length &nbsp;<span id="lengthVal">11</span> ft</label>
         <input id="length" type="range" min="5" max="25" value="11"
                oninput="document.getElementById('lengthVal').textContent=this.value">
       </div>
       <div class="control-group">
-        <label>Width &nbsp;<span id="widthVal">5</span> ft</label>
+        <label>Course Width &nbsp;<span id="widthVal">5</span> ft</label>
         <input id="width" type="range" min="5" max="25" value="5"
                oninput="document.getElementById('widthVal').textContent=this.value">
       </div>
       <div class="control-group">
-        <label>Gates</label>
+        <label>Number of Gates</label>
         <select id="gates">
           <option value="0">0</option><option value="1">1</option>
           <option value="2">2</option><option value="3" selected>3</option>
@@ -38,7 +39,7 @@
         </select>
       </div>
       <div class="control-group">
-        <label>Difficulty</label>
+        <label>Course Difficulty</label>
         <select id="difficulty">
           <option value="easy">Easy</option>
           <option value="normal" selected>Normal</option>
@@ -67,7 +68,7 @@
         <div class="stat-value" id="rating">–</div>
       </div>
       <div class="stat-badge">
-        <div class="stat-label">Distance</div>
+        <div class="stat-label">Total Distance</div>
         <div class="stat-value" id="totalDist">–</div>
       </div>
       <div class="stat-badge">
