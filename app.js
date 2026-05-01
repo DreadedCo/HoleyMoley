@@ -411,6 +411,20 @@ function drawFrame(data, sp, ballPos, atHole) {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Inter,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.index, cx, cy);
   });
 
+  // Ball spawn marker (small red X)
+  var sx = tx(data.ball.x), sy = ty(data.ball.y);
+  var br = 0.12 * s;           // same as ball radius
+  var size = br * 0.8;         // slightly smaller than the ball
+
+  ctx.strokeStyle = '#e53935'; // red
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx - size, sy - size);
+  ctx.lineTo(sx + size, sy + size);
+  ctx.moveTo(sx + size, sy - size);
+  ctx.lineTo(sx - size, sy + size);
+  ctx.stroke();
+
   // Hole & Flag
   var hx = tx(data.hole.x), hy = ty(data.hole.y), hr = 0.22 * s, pH = 35;
   ctx.beginPath(); ctx.ellipse(hx, hy + hr * 0.3, hr * 1.1, hr * 0.5, 0, 0, Math.PI * 2);
