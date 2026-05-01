@@ -35,11 +35,20 @@ body {
 .title-wrap { position: relative; display: inline-block; margin-bottom: 2px; }
 
 .title-wrap h1 {
-  font-size: 48px; font-weight: 800; letter-spacing: -1.5px;
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
   background: linear-gradient(180deg, #fff 0%, #a5d6a7 50%, #66bb6a 100%);
-  -webkit-background-clip: text; background-clip: text;
+  -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 12px var(--accent-glow));
+}
+
+.title-wrap h1 .emoji {
+  -webkit-text-fill-color: initial;
+  background: none;
+  filter: none;
 }
 
 .title-glow {
