@@ -47,7 +47,16 @@ function getLegDistances(points) {
   return legs;
 }
 
-function anglePenalty(points) {
+/* Normalize an angle difference to [0, PI/2] */
+function angleMisalignment(a, b) {
+  var d = Math.abs(a - b) % (Math.PI * 2);
+  if (d > Math.PI) d = Math.PI * 2 - d;
+  if (d > Math.PI / 2) d = Math.PI - d;
+  return d;
+}
+
+/* Sum of turn angles at each gate */
+function turnPenalty(points) {
   var penalty = 0;
   for (var i = 1; i < points.length - 1; i++) {
     var a1 = Math.atan2(points[i].y - points[i-1].y, points[i].x - points[i-1].x);
@@ -59,20 +68,55 @@ function anglePenalty(points) {
   return penalty;
 }
 
+/*
+ * Gate angle difficulty — how misaligned each gate is relative to
+ * its approach and exit directions. A gate perpendicular to the
+ * ball's travel is easy (0). A gate angled away is hard (up to 1).
+ */
+function gateAnglePenalty(points, gates) {
+  if (gates.length === 0) return 0;
+
+  var total = 0;
+
+  for (var i = 0; i < gates.length; i++) {
+    var g      = gates[i];
+    var prev   = points[i];
+    var center = points[i + 1];
+    var next   = points[i + 2];
+
+    var gateDir    = Math.atan2(g.y2 - g.y1, g.x2 - g.x1);
+    var gateNormal = gateDir + Math.PI / 2;
+
+    var approachDir = Math.atan2(center.y - prev.y, center.x - prev.x);
+    var exitDir     = Math.atan2(next.y - center.y, next.x - center.x);
+
+    var approachMis = angleMisalignment(approachDir, gateNormal);
+    var exitMis     = angleMisalignment(exitDir, gateNormal);
+
+    total += (approachMis + exitMis) / Math.PI;
+  }
+
+  return total / gates.length;
+}
+
 /* ── Par Calculation ── */
 
 function computePar(data, diff) {
   var n = data.gates.length;
   if (n === 0) return 1;
 
-  var points  = getPoints(data);
-  var legs    = getLegDistances(points);
-  var total   = legs.reduce(function(s, v) { return s + v; }, 0);
-  var avgLeg  = total / legs.length;
-  var avgTurn = anglePenalty(points) / n;
+  var points    = getPoints(data);
+  var legs      = getLegDistances(points);
+  var total     = legs.reduce(function(s, v) { return s + v; }, 0);
+  var avgLeg    = total / legs.length;
+  var avgTurn   = turnPenalty(points) / n;
+  var gateAngle = gateAnglePenalty(points, data.gates);
 
   var baseShots = n + 1;
-  var rawPar = baseShots * DIFFICULTY[diff].parMult + avgTurn * 1.5 + (avgLeg / 5) * 0.5;
+  var rawPar = baseShots * DIFFICULTY[diff].parMult
+    + avgTurn * 1.5
+    + (avgLeg / 5) * 0.5
+    + gateAngle * 2.0;
 
   return Math.max(1, Math.round(rawPar));
 }
@@ -85,7 +129,7 @@ function computeRating(data, par) {
 
   var points = getPoints(data);
 
-  var angleScore = clamp(anglePenalty(points) / n * 10, 0, 10);
+  var turnScore = clamp(turnPenalty(points) / n * 10, 0, 10);
 
   var bh = dist(data.ball, data.hole);
   var spreadScore = 0;
@@ -102,9 +146,14 @@ function computeRating(data, par) {
     spreadScore = clamp((totalSpread / n) / (Math.min(data.l, data.w) * 0.3) * 10, 0, 10);
   }
 
+  var angleScore   = clamp(gateAnglePenalty(points, data.gates) * 10, 0, 10);
   var parTightness = clamp((1 - (par - n) / (n + 1)) * 10, 0, 10);
 
-  var raw = angleScore * 0.35 + spreadScore * 0.35 + parTightness * 0.3;
+  var raw = turnScore * 0.25
+    + spreadScore * 0.25
+    + angleScore * 0.25
+    + parTightness * 0.25;
+
   return clamp(Math.round(raw), 1, 10);
 }
 
@@ -154,7 +203,9 @@ function placeGates(ball, hole, l, w, n, config) {
     var prev        = gates.length ? gateCenter(gates[gates.length - 1]) : ball;
     var approachAng = Math.atan2(cy - prev.y, cx - prev.x);
     var perpAng     = approachAng + Math.PI / 2;
-    var ang         = perpAng + (rand(0, Math.PI) - perpAng) * config.angleRand;
+    var randomAng   = rand(0, Math.PI);
+    var ang         = perpAng + (randomAng - perpAng) * config.angleRand;
+
     var dx = Math.cos(ang) * GATE_HALF_W;
     var dy = Math.sin(ang) * GATE_HALF_W;
 
