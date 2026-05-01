@@ -1,7 +1,8 @@
 /* ── Constants ── */
 
 var GATE_COLORS = [
-  'red','orange','yellow','blue','indigo','violet','pink','cyan','magenta'
+  '#e53935','#fb8c00','#fdd835','#1e88e5',
+  '#3949ab','#8e24aa','#d81b60','#00acc1','#e91e63'
 ];
 
 var DIFFICULTY = {
@@ -179,22 +180,21 @@ function generate() {
   var n = parseInt(document.getElementById('gates').value);
   var d = document.getElementById('difficulty').value;
 
-  var layout = generateLayout(l, w, n, d);
-  var par    = computePar(layout, d);
-  var rating = computeRating(layout, par);
-
-  var points = getPoints(layout);
-  var legs   = getLegDistances(points);
-  var total  = legs.reduce(function(s, v) { return s + v; }, 0);
-  var longest = Math.max.apply(null, legs);
+  var layout  = generateLayout(l, w, n, d);
+  var par     = computePar(layout, d);
+  var rating  = computeRating(layout, par);
+  var points  = getPoints(layout);
+  var legs    = getLegDistances(points);
+  var total   = legs.reduce(function(s, v) { return s + v; }, 0);
+  var longest = legs.length ? Math.max.apply(null, legs) : 0;
 
   holeCounter++;
 
-  document.getElementById('holeNum').textContent     = holeCounter;
-  document.getElementById('parText').textContent      = par;
-  document.getElementById('rating').textContent       = rating + '/10';
-  document.getElementById('totalDist').textContent    = total.toFixed(1) + ' ft';
-  document.getElementById('longestShot').textContent  = longest.toFixed(1) + ' ft';
+  document.getElementById('holeNum').textContent    = holeCounter;
+  document.getElementById('parText').textContent     = par;
+  document.getElementById('rating').textContent      = rating + '/10';
+  document.getElementById('totalDist').textContent   = total.toFixed(1) + ' ft';
+  document.getElementById('longestShot').textContent = longest.toFixed(1) + ' ft';
 
   draw(layout);
 }
@@ -221,16 +221,56 @@ function draw(data) {
   var tx = function(x) { return x * scale; };
   var ty = function(y) { return y * scale; };
 
-  ctx.clearRect(0, 0, cw, ch);
+  drawGrass(ctx, cw, ch);
+  drawBorder(ctx, tx, ty, data);
   drawPath(ctx, data, tx, ty);
-  drawGates(ctx, data.gates, tx, ty);
+  drawGates(ctx, data.gates, tx, ty, scale);
   drawBall(ctx, data.ball, tx, ty, scale);
   drawHole(ctx, data.hole, tx, ty, scale);
 }
 
-function drawPath(ctx, data, tx, ty) {
+/* ── Grass Background ── */
+
+function drawGrass(ctx, cw, ch) {
+  var bg = ctx.createLinearGradient(0, 0, 0, ch);
+  bg.addColorStop(0, '#5cb85c');
+  bg.addColorStop(0.5, '#4caf50');
+  bg.addColorStop(1, '#43a047');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cw, ch);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  for (var i = 0; i < 300; i++) {
+    ctx.beginPath();
+    ctx.arc(rand(0, cw), rand(0, ch), rand(0.5, 2), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+  ctx.lineWidth = 1;
+  for (var i = 0; i < 150; i++) {
+    var gx = rand(0, cw), gy = rand(0, ch);
+    ctx.beginPath();
+    ctx.moveTo(gx, gy);
+    ctx.lineTo(gx + rand(-3, 3), gy - rand(3, 8));
+    ctx.stroke();
+  }
+}
+
+/* ── Course Border ── */
+
+function drawBorder(ctx, tx, ty, data) {
   ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-  ctx.lineWidth   = 1;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(tx(0.3), ty(0.3), tx(data.l - 0.6), ty(data.w - 0.6));
+}
+
+/* ── Dashed Path ── */
+
+function drawPath(ctx, data, tx, ty) {
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(tx(data.ball.x), ty(data.ball.y));
   data.gates.forEach(function(g) {
@@ -238,62 +278,201 @@ function drawPath(ctx, data, tx, ty) {
   });
   ctx.lineTo(tx(data.hole.x), ty(data.hole.y));
   ctx.stroke();
+  ctx.setLineDash([]);
 }
 
-function drawGates(ctx, gates, tx, ty) {
+/* ── Gates ── */
+
+function drawGates(ctx, gates, tx, ty, scale) {
   gates.forEach(function(g) {
     var dx  = g.x2 - g.x1;
     var dy  = g.y2 - g.y1;
     var len = Math.hypot(dx, dy);
     var px  = (-dy / len) * GATE_THICK;
     var py  = ( dx / len) * GATE_THICK;
+    var cx  = tx((g.x1 + g.x2) / 2);
+    var cy  = ty((g.y1 + g.y2) / 2);
 
+    // Shadow
+    ctx.save();
+    ctx.translate(2, 2);
     ctx.beginPath();
     ctx.moveTo(tx(g.x1 - px), ty(g.y1 - py));
     ctx.lineTo(tx(g.x2 - px), ty(g.y2 - py));
     ctx.lineTo(tx(g.x2 + px), ty(g.y2 + py));
     ctx.lineTo(tx(g.x1 + px), ty(g.y1 + py));
     ctx.closePath();
-    ctx.fillStyle   = g.color; ctx.fill();
-    ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+    ctx.restore();
 
-    ctx.fillStyle    = 'black';
-    ctx.font         = 'bold 12px Inter, sans-serif';
-    ctx.textAlign    = 'center';
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(tx(g.x1 - px), ty(g.y1 - py));
+    ctx.lineTo(tx(g.x2 - px), ty(g.y2 - py));
+    ctx.lineTo(tx(g.x2 + px), ty(g.y2 + py));
+    ctx.lineTo(tx(g.x1 + px), ty(g.y1 + py));
+    ctx.closePath();
+    ctx.fillStyle = g.color;
+    ctx.fill();
+
+    // Glossy highlight
+    ctx.save();
+    ctx.clip();
+    var hl = ctx.createLinearGradient(tx(g.x1), ty(g.y1), tx(g.x2), ty(g.y2));
+    hl.addColorStop(0, 'rgba(255,255,255,0.35)');
+    hl.addColorStop(0.5, 'rgba(255,255,255,0)');
+    hl.addColorStop(1, 'rgba(255,255,255,0.15)');
+    ctx.fillStyle = hl;
+    ctx.fillRect(
+      tx(Math.min(g.x1, g.x2) - GATE_THICK) - 5,
+      ty(Math.min(g.y1, g.y2) - GATE_THICK) - 5,
+      tx(Math.abs(dx) + GATE_THICK * 2) + 10,
+      ty(Math.abs(dy) + GATE_THICK * 2) + 10
+    );
+    ctx.restore();
+
+    // Border
+    ctx.beginPath();
+    ctx.moveTo(tx(g.x1 - px), ty(g.y1 - py));
+    ctx.lineTo(tx(g.x2 - px), ty(g.y2 - py));
+    ctx.lineTo(tx(g.x2 + px), ty(g.y2 + py));
+    ctx.lineTo(tx(g.x1 + px), ty(g.y1 + py));
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Number badge
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px Inter, sans-serif';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(g.index, tx((g.x1 + g.x2) / 2), ty((g.y1 + g.y2) / 2));
+    ctx.fillText(g.index, cx, cy);
   });
 }
 
-function drawCircle(ctx, x, y, r, fill, stroke) {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  if (fill)   { ctx.fillStyle   = fill;   ctx.fill();   }
-  if (stroke) { ctx.strokeStyle = stroke;  ctx.lineWidth = 1; ctx.stroke(); }
-}
+/* ── Golf Ball ── */
 
 function drawBall(ctx, ball, tx, ty, scale) {
-  drawCircle(ctx, tx(ball.x), ty(ball.y), 0.08 * scale, 'white', 'black');
+  var bx = tx(ball.x);
+  var by = ty(ball.y);
+  var r  = 0.12 * scale;
+
+  // Shadow
+  ctx.beginPath();
+  ctx.arc(bx + 2, by + 2, r, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fill();
+
+  // Ball with radial gradient
+  var bg = ctx.createRadialGradient(bx - r * 0.3, by - r * 0.3, r * 0.1, bx, by, r);
+  bg.addColorStop(0, '#ffffff');
+  bg.addColorStop(0.7, '#e0e0e0');
+  bg.addColorStop(1, '#bdbdbd');
+  ctx.beginPath();
+  ctx.arc(bx, by, r, 0, Math.PI * 2);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Shine highlight
+  ctx.beginPath();
+  ctx.arc(bx - r * 0.25, by - r * 0.25, r * 0.3, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fill();
 }
+
+/* ── Hole & Flag ── */
 
 function drawHole(ctx, hole, tx, ty, scale) {
   var hx = tx(hole.x);
   var hy = ty(hole.y);
+  var hr = 0.22 * scale;
+  var poleH = 35;
 
-  drawCircle(ctx, hx, hy, 0.2 * scale, 'white', 'black');
-
-  ctx.strokeStyle = 'red';
-  ctx.lineWidth   = 1;
+  // Ground shadow
   ctx.beginPath();
-  ctx.moveTo(hx, hy);
-  ctx.lineTo(hx, hy - 30);
+  ctx.ellipse(hx, hy + hr * 0.3, hr * 1.1, hr * 0.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fill();
+
+  // Hole with radial gradient
+  var hg = ctx.createRadialGradient(hx, hy, hr * 0.2, hx, hy, hr);
+  hg.addColorStop(0, '#1a1a1a');
+  hg.addColorStop(0.7, '#333');
+  hg.addColorStop(1, '#555');
+  ctx.beginPath();
+  ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+  ctx.fillStyle = hg;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.fillStyle = 'red';
+  // Inner ring
   ctx.beginPath();
-  ctx.moveTo(hx, hy - 30);
-  ctx.lineTo(hx + 15, hy - 22);
-  ctx.lineTo(hx, hy - 15);
+  ctx.arc(hx, hy, hr * 0.6, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Pole shadow
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(hx + 2, hy + 2);
+  ctx.lineTo(hx + 2, hy - poleH + 2);
+  ctx.stroke();
+
+  // Pole with metallic gradient
+  var pg = ctx.createLinearGradient(hx, hy, hx, hy - poleH);
+  pg.addColorStop(0, '#888');
+  pg.addColorStop(0.5, '#ccc');
+  pg.addColorStop(1, '#aaa');
+  ctx.strokeStyle = pg;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(hx, hy);
+  ctx.lineTo(hx, hy - poleH);
+  ctx.stroke();
+
+  // Flag with gradient
+  ctx.beginPath();
+  ctx.moveTo(hx, hy - poleH);
+  ctx.lineTo(hx + 18, hy - poleH + 9);
+  ctx.lineTo(hx, hy - poleH + 18);
   ctx.closePath();
+  var fg = ctx.createLinearGradient(hx, hy - poleH, hx + 18, hy - poleH + 9);
+  fg.addColorStop(0, '#f44336');
+  fg.addColorStop(1, '#d32f2f');
+  ctx.fillStyle = fg;
   ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Flag shine
+  ctx.beginPath();
+  ctx.moveTo(hx + 1, hy - poleH + 2);
+  ctx.lineTo(hx + 10, hy - poleH + 7);
+  ctx.lineTo(hx + 1, hy - poleH + 10);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fill();
+
+  // Gold pole cap
+  ctx.beginPath();
+  ctx.arc(hx, hy - poleH, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#fdd835';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
 }
