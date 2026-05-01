@@ -2,10 +2,10 @@
 
 var GATE_COLORS = ['#e53935','#fb8c00','#fdd835','#1e88e5','#3949ab','#8e24aa','#d81b60','#00acc1','#e91e63'];
 var DIFFICULTY = {
-  easy:       { spread: 0.12, angleRand: 0.15, parMult: 1.3 },
-  normal:     { spread: 0.35, angleRand: 0.50, parMult: 1.0 },
-  hard:       { spread: 0.70, angleRand: 1.00, parMult: 0.75 },
-  impossible: { spread: 0.90, angleRand: 1.00, parMult: 0.60 }
+  easy:       { spread: 0.12, angleRand: 0.15, parMult: 1.3, detour: 0.0  },
+  normal:     { spread: 0.35, angleRand: 0.50, parMult: 1.0, detour: 0.15 },
+  hard:       { spread: 0.70, angleRand: 1.00, parMult: 0.75, detour: 0.35 },
+  impossible: { spread: 0.90, angleRand: 1.00, parMult: 0.60, detour: 0.55 }
 };
 var MIN_DIST = 1, MAX_RETRIES = 500;
 var GATE_HALF_W = 0.25, GATE_THICK = 0.12, BALL_R = 0.08;
@@ -243,11 +243,18 @@ function placeBH(l, w, diff) {
 
 function placeGates(ball, hole, l, w, n, cfg) {
   var pa = Math.atan2(hole.y - ball.y, hole.x - ball.x), placed = [ball, hole], gates = [];
+  var fieldSize = Math.min(l, w);                          // ← new
   for (var i = 0; i < n; i++) {
     var t = (i + 1) / (n + 1), bx = ball.x + (hole.x - ball.x) * t, by = ball.y + (hole.y - ball.y) * t;
     var cx, cy, ok = false;
+    var side = (i % 2 === 0) ? 1 : -1;                    // ← new: alternate sides
+    var minOffset = cfg.detour * fieldSize;                // ← new: minimum perpendicular distance
     for (var a = 0; a < MAX_RETRIES; a++) {
-      var p = rand(-1, 1) * cfg.spread * Math.min(l, w), j = a > 50 ? (a / MAX_RETRIES) * 2 : 0;
+      var p = rand(-1, 1) * cfg.spread * fieldSize;       // ← was: * Math.min(l, w)
+      if (cfg.detour > 0) {                               // ← new block start
+        p = side * (minOffset + Math.abs(p));              //   force to one side with floor
+      }                                                    // ← new block end
+      var j = a > 50 ? (a / MAX_RETRIES) * 2 : 0;
       var tx = clamp(bx + Math.cos(pa + Math.PI / 2) * p + rand(-j, j), 1, l - 1);
       var ty = clamp(by + Math.sin(pa + Math.PI / 2) * p + rand(-j, j), 1, w - 1);
       if (placed.every(function(q) { return dst({ x: tx, y: ty }, q) >= MIN_DIST; })) { cx = tx; cy = ty; ok = true; break; }
