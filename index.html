@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Holey Moley</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
   <link rel="stylesheet" href="style.css">
@@ -10,21 +11,23 @@
 
 <div class="container">
 
+  <!-- Header -->
   <div class="title-wrap">
     <div class="title-glow"></div>
     <h1>⛳ Holey Moley 🏌️</h1>
   </div>
   <div class="subtitle">Created by Max &middot; v1.1</div>
 
+  <!-- Controls -->
   <div class="card">
     <div class="controls-row">
       <div class="control-group">
-        <label>Course Length &nbsp;<span id="lengthVal">11</span> ft</label>
+        <label>Course Length <span id="lengthVal">11</span> ft</label>
         <input id="length" type="range" min="5" max="25" value="11"
                oninput="document.getElementById('lengthVal').textContent=this.value">
       </div>
       <div class="control-group">
-        <label>Course Width &nbsp;<span id="widthVal">5</span> ft</label>
+        <label>Course Width <span id="widthVal">5</span> ft</label>
         <input id="width" type="range" min="5" max="25" value="5"
                oninput="document.getElementById('widthVal').textContent=this.value">
       </div>
@@ -40,10 +43,11 @@
       </div>
       <div class="control-group">
         <label>Course Difficulty</label>
-        <select id="difficulty">
+        <select id="difficulty" onchange="document.body.classList.toggle('impossible',this.value==='impossible')">
           <option value="easy">Easy</option>
           <option value="normal" selected>Normal</option>
           <option value="hard">Hard</option>
+          <option value="impossible">Impossible</option>
         </select>
       </div>
     </div>
@@ -53,28 +57,14 @@
     </div>
   </div>
 
+  <!-- Course Display -->
   <div class="card">
     <div class="stats-row">
-      <div class="stat-badge hole-badge">
-        <div class="stat-label">Hole</div>
-        <div class="stat-value" id="holeNum">–</div>
-      </div>
-      <div class="stat-badge">
-        <div class="stat-label">Par</div>
-        <div class="stat-value" id="parText">–</div>
-      </div>
-      <div class="stat-badge">
-        <div class="stat-label">Difficulty</div>
-        <div class="stat-value" id="rating">–</div>
-      </div>
-      <div class="stat-badge">
-        <div class="stat-label">Total Distance</div>
-        <div class="stat-value" id="totalDist">–</div>
-      </div>
-      <div class="stat-badge">
-        <div class="stat-label">Longest Shot</div>
-        <div class="stat-value" id="longestShot">–</div>
-      </div>
+      <div class="stat-badge hole-badge"><div class="stat-label">Hole</div><div class="stat-value" id="holeNum">–</div></div>
+      <div class="stat-badge"><div class="stat-label">Par</div><div class="stat-value" id="parText">–</div></div>
+      <div class="stat-badge"><div class="stat-label">Difficulty</div><div class="stat-value" id="rating">–</div></div>
+      <div class="stat-badge"><div class="stat-label">Total Distance</div><div class="stat-value" id="totalDist">–</div></div>
+      <div class="stat-badge"><div class="stat-label">Longest Shot</div><div class="stat-value" id="longestShot">–</div></div>
     </div>
     <canvas id="c"></canvas>
   </div>
